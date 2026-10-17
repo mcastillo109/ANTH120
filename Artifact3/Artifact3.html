@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>GLB 3D Model Viewer</title>
+
+    <!-- THREE.JS LIBRARIES -->
+    <script src="../shared/three.min.js"></script>
+    <script src="../shared/GLTFLoader.js"></script>
+    <script src="../shared/OrbitControls.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #B7B7B7;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* CONTROL PANEL */
+
+        #controlPanel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 290px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            background: rgba(25, 25, 25, 0.94);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        #controlPanel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 12px;
+        }
+
+        #controlPanel h3 {
+            font-size: 14px;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            color: #bbbbbb;
+        }
+
+        .controlGroup {
+            margin-bottom: 15px;
+        }
+
+        .controlGroup label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 7px;
+        }
+
+        .controlGroup input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .controlGroup input[type="color"] {
+            width: 100%;
+            height: 35px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .value {
+            float: right;
+            color: #8fcaff;
+        }
+
+        button {
+            width: 100%;
+            padding: 11px;
+            background: #3979b9;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #5095d8;
+        }
+
+        .checkboxGroup {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .checkboxGroup label {
+            margin-bottom: 0;
+        }
+
+        #status {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 5;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- =====================================
+     CONTROL PANEL
+===================================== -->
+
+    <div id="controlPanel">
+
+        <h2>GLB Viewer Controls</h2>
+
+        <!-- BACKGROUND -->
+
+        <h3>Background</h3>
+
+        <div class="controlGroup">
+
+            <label for="backgroundColor">
+                Background Color
+            </label>
+
+            <input type="color" id="backgroundColor" value="#B7B7B7">
+
+        </div>
+
+
+        <!-- LIGHTING -->
+
+        <h3>Lighting</h3>
+
+        <div class="controlGroup">
+
+            <label for="ambientIntensity">
+                Ambient Light
+                <span class="value" id="ambientValue">0.6</span>
+            </label>
+
+            <input type="range" id="ambientIntensity" min="0" max="3" step="0.1" value="0.6">
+
+        </div>
+
+
+        <div class="controlGroup">
+
+            <label for="mainIntensity">
+                Main Light
+                <span class="value" id="mainValue">1.8</span>
+            </label>
+
+            <input type="range" id="mainIntensity" min="0" max="5" step="0.1" value="1.8">
+
+        </div>
+
+
+        <div class="controlGroup">
+
+            <label for="fillIntensity">
+                Fill Light
+                <span class="value" id="fillValue">0.5</span>
+            </label>
+
+            <input type="range" id="fillIntensity" min="0" max="3" step="0.1" value="0.5">
+
+        </div>
+
+
+        <!-- EXPOSURE -->
+
+        <h3>Rendering</h3>
+
+        <div class="controlGroup">
+
+            <label for="exposure">
+                Exposure
+                <span class="value" id="exposureValue">1.0</span>
+            </label>
+
+            <input type="range" id="exposure" min="0.1" max="3" step="0.1" value="1.0">
+
+        </div>
+
+
+        <!-- LIGHT POSITION -->
+
+        <h3>Main Light Position</h3>
+
+        <div class="controlGroup">
+
+            <label for="lightX">
+                X Position
+                <span class="value" id="lightXValue">8</span>
+            </label>
+
+            <input type="range" id="lightX" min="-20" max="20" step="1" value="8">
+
+        </div>
+
+
+        <div class="controlGroup">
+
+            <label for="lightY">
+                Y Position
+                <span class="value" id="lightYValue">12</span>
+            </label>
+
+            <input type="range" id="lightY" min="-20" max="20" step="1" value="12">
+
+        </div>
+
+
+        <div class="controlGroup">
+
+            <label for="lightZ">
+                Z Position
+                <span class="value" id="lightZValue">10</span>
+            </label>
+
+            <input type="range" id="lightZ" min="-20" max="20" step="1" value="10">
+
+        </div>
+
+
+        <!-- MODEL CONTROLS -->
+
+        <h3>Model Controls</h3>
+
+        <div class="controlGroup checkboxGroup">
+
+            <input type="checkbox" id="autoRotate">
+
+            <label for="autoRotate">
+                Auto Rotate
+            </label>
+
+        </div>
+
+
+        <button id="resetButton">
+            Reset Settings
+        </button>
+
+    </div>
+
+
+    <!-- STATUS -->
+
+    <div id="status">
+        Loading GLB model...
+    </div>
+
+
+    <script>
+
+        // =====================================
+        // DEFAULT SETTINGS
+        // =====================================
+
+        const defaults = {
+
+            background: "#B7B7B7",
+
+            ambient: 0.6,
+
+            main: 1.8,
+
+            fill: 0.5,
+
+            exposure: 1.0,
+
+            lightX: 8,
+
+            lightY: 12,
+
+            lightZ: 10
+
+        };
+
+
+        // =====================================
+        // CREATE SCENE
+        // =====================================
+
+        const scene = new THREE.Scene();
+
+        scene.background = new THREE.Color(
+            defaults.background
+        );
+
+
+        // =====================================
+        // CREATE CAMERA
+        // =====================================
+
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            window.innerWidth / window.innerHeight,
+            0.01,
+            10000
+        );
+
+
+        // =====================================
+        // CREATE RENDERER
+        // =====================================
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: false
+        });
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+
+        renderer.setPixelRatio(
+            Math.min(window.devicePixelRatio, 2)
+        );
+
+
+        // =====================================
+        // TONE MAPPING
+        // =====================================
+
+        // ACES Filmic tone mapping
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+        // Exposure
+        renderer.toneMappingExposure = defaults.exposure;
+
+        // Output color handling depends on the Three.js version
+        if (THREE.SRGBColorSpace !== undefined) {
+
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        } else if (THREE.sRGBEncoding !== undefined) {
+
+            renderer.outputEncoding = THREE.sRGBEncoding;
+
+        }
+
+        document.body.appendChild(renderer.domElement);
+
+
+        // =====================================
+        // LIGHTING
+        // =====================================
+
+        // Ambient Light
+
+        const ambientLight = new THREE.AmbientLight(
+            0xffffff,
+            defaults.ambient
+        );
+
+        scene.add(ambientLight);
+
+
+        // Main Directional Light
+
+        const mainLight = new THREE.DirectionalLight(
+            0xffffff,
+            defaults.main
+        );
+
+        mainLight.position.set(
+            defaults.lightX,
+            defaults.lightY,
+            defaults.lightZ
+        );
+
+        scene.add(mainLight);
+
+
+        // Fill Directional Light
+
+        const fillLight = new THREE.DirectionalLight(
+            0xffffff,
+            defaults.fill
+        );
+
+        fillLight.position.set(
+            -8,
+            5,
+            -10
+        );
+
+        scene.add(fillLight);
+
+
+        // =====================================
+        // ORBIT CONTROLS
+        // =====================================
+
+        const controls = new THREE.OrbitControls(
+            camera,
+            renderer.domElement
+        );
+
+        controls.enableDamping = true;
+
+        controls.dampingFactor = 0.05;
+
+        controls.enableZoom = true;
+
+        controls.enableRotate = true;
+
+        controls.enablePan = true;
+
+        controls.screenSpacePanning = false;
+
+        controls.autoRotate = false;
+
+        controls.autoRotateSpeed = 2.0;
+
+
+        // =====================================
+        // CAMERA FIT FUNCTION
+        // =====================================
+
+        function fitCameraToObject(object) {
+
+            // Calculate bounding box
+
+            const box = new THREE.Box3().setFromObject(object);
+
+            const size = box.getSize(
+                new THREE.Vector3()
+            );
+
+            const center = box.getCenter(
+                new THREE.Vector3()
+            );
+
+            // Center model
+
+            object.position.sub(center);
+
+            // Determine model dimensions
+
+            const maxDim = Math.max(
+                size.x,
+                size.y,
+                size.z
+            );
+
+            if (maxDim <= 0) {
+
+                console.error("Invalid model dimensions.");
+
+                return;
+
+            }
+
+            // Calculate camera field of view
+
+            const fov = camera.fov * Math.PI / 180;
+
+            const horizontalFov = 2 * Math.atan(
+                Math.tan(fov / 2) * camera.aspect
+            );
+
+            // Calculate camera distances
+
+            const distanceY =
+                size.y / (2 * Math.tan(fov / 2));
+
+            const distanceX =
+                size.x / (2 * Math.tan(horizontalFov / 2));
+
+            // Add padding and account for depth
+
+            const cameraDistance =
+                Math.max(distanceX, distanceY) * 1.5
+                + size.z / 2;
+
+            // Position camera
+
+            camera.position.set(
+                0,
+                0,
+                cameraDistance
+            );
+
+            camera.lookAt(0, 0, 0);
+
+            // Update clipping planes
+
+            camera.near = Math.max(
+                cameraDistance / 1000,
+                0.001
+            );
+
+            camera.far = Math.max(
+                cameraDistance + maxDim * 10,
+                100
+            );
+
+            camera.updateProjectionMatrix();
+
+            // Set orbit center
+
+            controls.target.set(0, 0, 0);
+
+            // Set zoom limits
+
+            controls.minDistance = Math.max(
+                maxDim * 0.05,
+                0.001
+            );
+
+            controls.maxDistance = Math.max(
+                maxDim * 20,
+                cameraDistance * 2
+            );
+
+            controls.update();
+
+        }
+
+
+        // =====================================
+        // LOAD GLB MODEL
+        // =====================================
+
+        const MODEL_PATH = './';
+
+        const gltfLoader = new THREE.GLTFLoader();
+
+        gltfLoader.setPath(MODEL_PATH);
+
+        console.log("Loading GLB model...");
+
+        gltfLoader.load(
+
+            'Artifact3.glb',
+
+            function (gltf) {
+
+                console.log("GLB loaded successfully!");
+
+                const object = gltf.scene;
+
+                // Inspect model meshes
+
+                object.traverse(function (child) {
+
+                    if (child.isMesh) {
+
+                        console.log(
+                            "Mesh:",
+                            child.name
+                        );
+
+                        // Support multiple materials
+
+                        const materials =
+                            Array.isArray(child.material)
+                                ? child.material
+                                : [child.material];
+
+                        materials.forEach(function (material) {
+
+                            if (material) {
+
+                                // Preserve original GLB material settings,
+                                // including texture and sidedness.
+
+                                if (material.map) {
+
+                                    console.log(
+                                        "Texture found:",
+                                        material.name
+                                    );
+
+                                }
+
+                            }
+
+                        });
+
+                    }
+
+                });
+
+                // Add model
+
+                scene.add(object);
+
+                // Fit camera
+
+                fitCameraToObject(object);
+
+                document.getElementById("status").textContent =
+                    "GLB loaded — Drag to rotate | Scroll to zoom";
+
+            },
+
+            function (xhr) {
+
+                if (xhr.total > 0) {
+
+                    const percent =
+                        (xhr.loaded / xhr.total) * 100;
+
+                    console.log(
+                        "GLB loading: " +
+                        percent.toFixed(1) +
+                        "%"
+                    );
+
+                }
+
+            },
+
+            function (error) {
+
+                console.error(
+                    "Error loading GLB:",
+                    error
+                );
+
+                document.getElementById("status").textContent =
+                    "Error loading GLB model";
+
+            }
+
+        );
+
+
+        // =====================================
+        // BACKGROUND CONTROL
+        // =====================================
+
+        document.getElementById("backgroundColor")
+            .addEventListener("input", function () {
+
+                scene.background = new THREE.Color(
+                    this.value
+                );
+
+            });
+
+
+        // =====================================
+        // GENERIC SLIDER FUNCTION
+        // =====================================
+
+        function setupSlider(sliderId, valueId, callback) {
+
+            const slider = document.getElementById(sliderId);
+
+            const valueDisplay = document.getElementById(valueId);
+
+            slider.addEventListener("input", function () {
+
+                const value = parseFloat(this.value);
+
+                valueDisplay.textContent =
+                    Number.isInteger(value)
+                        ? value.toString()
+                        : value.toFixed(1);
+
+                callback(value);
+
+            });
+
+        }
+
+
+        // =====================================
+        // LIGHTING CONTROLS
+        // =====================================
+
+        // Ambient Light
+
+        setupSlider(
+            "ambientIntensity",
+            "ambientValue",
+            value => ambientLight.intensity = value
+        );
+
+
+        // Main Light
+
+        setupSlider(
+            "mainIntensity",
+            "mainValue",
+            value => mainLight.intensity = value
+        );
+
+
+        // Fill Light
+
+        setupSlider(
+            "fillIntensity",
+            "fillValue",
+            value => fillLight.intensity = value
+        );
+
+
+        // =====================================
+        // EXPOSURE CONTROL
+        // =====================================
+
+        setupSlider(
+            "exposure",
+            "exposureValue",
+            value => renderer.toneMappingExposure = value
+        );
+
+
+        // =====================================
+        // LIGHT POSITION CONTROLS
+        // =====================================
+
+        // X
+
+        setupSlider(
+            "lightX",
+            "lightXValue",
+            value => mainLight.position.x = value
+        );
+
+
+        // Y
+
+        setupSlider(
+            "lightY",
+            "lightYValue",
+            value => mainLight.position.y = value
+        );
+
+
+        // Z
+
+        setupSlider(
+            "lightZ",
+            "lightZValue",
+            value => mainLight.position.z = value
+        );
+
+
+        // =====================================
+        // AUTO ROTATE
+        // =====================================
+
+        document.getElementById("autoRotate")
+            .addEventListener("change", function () {
+
+                controls.autoRotate = this.checked;
+
+            });
+
+
+        // =====================================
+        // RESET SETTINGS
+        // =====================================
+
+        document.getElementById("resetButton")
+            .addEventListener("click", function () {
+
+                // Reset background
+
+                document.getElementById("backgroundColor").value =
+                    defaults.background;
+
+                scene.background = new THREE.Color(
+                    defaults.background
+                );
+
+
+                // Reset ambient
+
+                document.getElementById("ambientIntensity").value =
+                    defaults.ambient;
+
+                document.getElementById("ambientValue").textContent =
+                    defaults.ambient.toFixed(1);
+
+                ambientLight.intensity = defaults.ambient;
+
+
+                // Reset main light
+
+                document.getElementById("mainIntensity").value =
+                    defaults.main;
+
+                document.getElementById("mainValue").textContent =
+                    defaults.main.toFixed(1);
+
+                mainLight.intensity = defaults.main;
+
+
+                // Reset fill light
+
+                document.getElementById("fillIntensity").value =
+                    defaults.fill;
+
+                document.getElementById("fillValue").textContent =
+                    defaults.fill.toFixed(1);
+
+                fillLight.intensity = defaults.fill;
+
+
+                // Reset exposure
+
+                document.getElementById("exposure").value =
+                    defaults.exposure;
+
+                document.getElementById("exposureValue").textContent =
+                    defaults.exposure.toFixed(1);
+
+                renderer.toneMappingExposure =
+                    defaults.exposure;
+
+
+                // Reset light position sliders
+
+                ["X", "Y", "Z"].forEach(axis => {
+
+                    const key = "light" + axis;
+
+                    document.getElementById(key).value =
+                        defaults[key];
+
+                    document.getElementById(key + "Value").textContent =
+                        defaults[key];
+
+                });
+
+
+                // Reset main light position
+
+                mainLight.position.set(
+                    defaults.lightX,
+                    defaults.lightY,
+                    defaults.lightZ
+                );
+
+
+                // Reset fill light position
+
+                fillLight.position.set(
+                    -8,
+                    5,
+                    -10
+                );
+
+
+                // Reset auto rotation
+
+                document.getElementById("autoRotate").checked =
+                    false;
+
+                controls.autoRotate = false;
+
+            });
+
+
+        // =====================================
+        // ANIMATION LOOP
+        // =====================================
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+
+            controls.update();
+
+            renderer.render(scene, camera);
+
+        }
+
+        animate();
+
+
+        // =====================================
+        // WINDOW RESIZE
+        // =====================================
+
+        window.addEventListener("resize", function () {
+
+            camera.aspect =
+                window.innerWidth / window.innerHeight;
+
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(
+                window.innerWidth,
+                window.innerHeight
+            );
+
+            renderer.setPixelRatio(
+                Math.min(window.devicePixelRatio, 2)
+            );
+
+        });
+
+    </script>
+
+</body>
+
+</html>
